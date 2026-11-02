@@ -52,7 +52,7 @@ svg { width: 20px; height: 20px; flex: none; }
   text-shadow: -3px 0 var(--split-a), 3px 0 var(--split-b);
 }
 .lead { color: var(--muted); font-size: 17px; max-width: 36ch; margin: 16px 0 24px; }
-.gbtn { min-height: 44px; }
+.gbtn { min-height: 44px; color-scheme: light; } /* Google's button frame is light; matching it keeps its corners clear */
 .note { color: var(--flare); font-size: 14px; }
 .how { margin: 36px 0 0; padding: 18px 18px 18px 38px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; color: var(--muted); display: grid; gap: 10px; max-width: 560px; }
 .how b { color: var(--text); font-weight: 650; }
