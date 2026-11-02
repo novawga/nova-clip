@@ -6,9 +6,8 @@ shortcut (F8 by default) or say "Nova, clip that".
 
 ## Download
 
-Get **NovaClip.exe** from the newest release on the
-[Releases page](https://github.com/novawga/nova-clip/releases/latest) and open
-it. Windows may show "Windows protected your PC" because the app isn't
+**[Download NovaClip.exe](https://github.com/novawga/nova-clip/raw/main/NovaClip.exe)**
+(the newest version) and open it. Windows may show "Windows protected your PC" because the app isn't
 code-signed: click **More info → Run anyway**.
 
 Nova Clip checks this page for new versions when it opens and asks before
@@ -28,8 +27,9 @@ installing one, so you only have to download it once.
 
 ## Checking a download
 
-Each release has `NovaClip.exe.sha256`, the SHA-256 checksum of `NovaClip.exe`.
-Nova Clip checks it automatically when it updates itself.
+`NovaClip.exe.sha256` is the SHA-256 checksum of `NovaClip.exe`, and
+`update.json` tells Nova Clip which version is newest. Nova Clip checks the
+checksum automatically when it updates itself.
 
 ## FFmpeg
 
