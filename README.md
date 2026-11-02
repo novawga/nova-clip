@@ -23,7 +23,7 @@ installing one, so you only have to download it once.
   frame rate
 - "Nova, clip that" voice command that learns your voice, runs offline, and
   ignores your speakers
-- Themes, including anime character themes with your own background picture
+- 21 color themes, each with its own background picture if you want one
 
 ## Checking a download
 
