@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nova Clip</title>
+<meta name="description" content="Watch and save your Nova Clip clips on your phone.">
+<meta name="theme-color" content="#0e0c17">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Nova Clip">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/favicon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-mark" viewBox="0 0 24 24"><rect width="24" height="24" rx="5.3" fill="#0c0a16"/><path d="M5.8 5.1H9.8L14.2 12.5V5.1H18.2V18.9H14.2L9.8 11.5V18.9H5.8Z" fill="#00e5ff" transform="translate(-1 0)"/><path d="M5.8 5.1H9.8L14.2 12.5V5.1H18.2V18.9H14.2L9.8 11.5V18.9H5.8Z" fill="#ff2e88" transform="translate(1 0)"/><path d="M5.8 5.1H9.8L14.2 12.5V5.1H18.2V18.9H14.2L9.8 11.5V18.9H5.8Z" fill="#fff"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 7h15M10 7V5h4v2m-7.5 0 .8 12a2 2 0 0 0 2 1.9h5.4a2 2 0 0 0 2-1.9l.8-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-film" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m10 9.2 5 2.8-5 2.8Z" fill="currentColor"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5v4h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<header class="top">
+  <div class="brand"><svg class="mark"><use href="#i-mark"/></svg><span>Nova Clip</span></div>
+  <button class="me" id="meBtn" hidden aria-haspopup="true" aria-expanded="false"><img id="meImg" alt=""><span id="meInitial"></span></button>
+</header>
+
+<div class="menu" id="menu" hidden>
+  <p class="menu-who"><b id="meName"></b><span id="meEmail"></span></p>
+  <button class="menu-item" id="signOutBtn">Sign out</button>
+</div>
+
+<main class="main">
+  <!-- signed out -->
+  <section class="view welcome" id="viewWelcome" hidden>
+    <h1 class="big">Your clips, on your phone.</h1>
+    <p class="lead" id="welcomeLead">Sign in with the same Google account you use in Nova Clip on your PC.</p>
+    <div class="gbtn" id="gbtn"></div>
+    <p class="note" id="setupNote" hidden>Google sign-in isn't set up on this server yet.</p>
+    <ol class="how">
+      <li>In Nova Clip on your PC, open <b>Settings → Phone</b> and sign in with Google.</li>
+      <li>Open a clip and press <b>Send to phone</b>, or turn on sending every new clip.</li>
+      <li>Watch them here and save them to your Photos. Tap <b>Share → Add to Home Screen</b> to keep this like an app.</li>
+    </ol>
+  </section>
+
+  <!-- connect a PC -->
+  <section class="view welcome" id="viewLink" hidden>
+    <h1 class="big">Connect Nova Clip</h1>
+    <p class="lead">Sign in so Nova Clip on your PC can send clips to your phone.</p>
+    <form method="post" action="/auth/device" id="continueForm" hidden>
+      <button class="btn primary wide" type="submit">Continue as <span id="continueAs"></span></button>
+      <button class="link" type="button" id="otherAccount">Use a different Google account</button>
+    </form>
+    <div class="gbtn" id="gbtnLink"></div>
+    <p class="note" id="setupNoteLink" hidden>Google sign-in isn't set up on this server yet.</p>
+  </section>
+
+  <!-- clips -->
+  <section class="view" id="viewClips" hidden>
+    <div class="space" id="space">
+      <div class="space-text"><b id="spaceUsed"></b><span id="spaceOf"></span></div>
+      <div class="space-bar"><span id="spaceBar"></span></div>
+      <p class="space-note">When your space is full, your oldest clips here make room for new ones. They stay on your PC.</p>
+    </div>
+    <div class="list-head">
+      <h2 class="h2">Clips <span class="count" id="clipCount"></span></h2>
+      <button class="icon" id="refreshBtn" aria-label="Refresh"><svg><use href="#i-refresh"/></svg></button>
+    </div>
+    <div class="grid" id="grid"></div>
+  </section>
+</main>
+
+<div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="sheet-top">
+    <button class="icon" id="sheetClose" aria-label="Close"><svg><use href="#i-close"/></svg></button>
+  </div>
+  <div class="sheet-video"><video id="video" controls playsinline preload="metadata"></video></div>
+  <div class="sheet-body">
+    <h2 class="sheet-title" id="sheetTitle"></h2>
+    <p class="sheet-meta" id="sheetMeta"></p>
+    <div class="sheet-actions">
+      <button class="btn primary" id="saveBtn"><svg><use href="#i-save"/></svg><span id="saveLabel">Save to Photos</span></button>
+      <a class="btn" id="downloadBtn" download><span>Download</span></a>
+      <button class="btn danger" id="deleteBtn"><svg><use href="#i-trash"/></svg><span>Delete</span></button>
+    </div>
+    <p class="save-help" id="saveHelp" hidden></p>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script src="/app.js"></script>
+</body>
+</html>

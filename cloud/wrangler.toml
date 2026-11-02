@@ -1,0 +1,26 @@
+# Nova Clip cloud: keeps clips you send from Nova Clip so you can watch and
+# save them on your phone. Deployed by Cloudflare Workers Builds from this folder.
+name = "novaclip"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = ["/api/*", "/auth/*", "/link"]
+
+[vars]
+# public: the "Sign in with Google" app ID (not a secret)
+GOOGLE_CLIENT_ID = ""
+# how much each person can keep online, in bytes (2 GB)
+QUOTA_BYTES = "2147483648"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "novaclip-clips"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "novaclip"
+database_id = "f71f43c3-208e-4fe6-9c7c-3843c6c6a704"
