@@ -1,6 +1,6 @@
 {
-  "version": "1.11.0",
-  "exe": "https://raw.githubusercontent.com/novawga/nova-clip/5d0ab2009de47f1f402b2b5bce8d36117f266a87/NovaClip.exe",
+  "version": "1.11.1",
+  "exe": "https://raw.githubusercontent.com/novawga/nova-clip/4798a237d73ed2aa97c2dabefb51c8a5c3cc0f9f/NovaClip.exe",
   "size": 35812352,
-  "sha256": "8cce53b1af056f7bbfd0051aae7c3258e1af632f670aa2616091e37c546f58b1"
+  "sha256": "e36bc43e7cb74223bda674265c05f4831008127776dd31003a32ab81cbe0c2dc"
 }
