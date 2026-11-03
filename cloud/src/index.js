@@ -43,6 +43,7 @@ async function route(request, env, ctx) {
   if (p === "/auth/google" && m === "POST") return googleRedirect(request, env, url);
   if (p === "/auth/logout" && m === "POST") return logout(request, env);
   if (p === "/auth/device" && m === "POST") return deviceFromSession(request, env);
+  if (p === "/auth/finish" && m === "GET") return finishSignIn(request, env);
   if (p === "/link" && m === "GET") return linkStart(request, env, url);
   // local testing only: wrangler dev --var DEV_LOGIN:1 (never set when deployed)
   if (p === "/auth/dev" && m === "POST" && env.DEV_LOGIN === "1") {
@@ -171,8 +172,13 @@ async function verifyGoogleToken(env, token) {
   if (!env.GOOGLE_CLIENT_ID) throw new HttpError(503, "Google sign-in isn't set up yet.");
   const parts = String(token || "").split(".");
   if (parts.length !== 3) throw new HttpError(400, "That sign-in didn't work. Try again.");
-  const header = JSON.parse(new TextDecoder().decode(b64urlBytes(parts[0])));
-  const claims = JSON.parse(new TextDecoder().decode(b64urlBytes(parts[1])));
+  let header, claims;
+  try {
+    header = JSON.parse(new TextDecoder().decode(b64urlBytes(parts[0])));
+    claims = JSON.parse(new TextDecoder().decode(b64urlBytes(parts[1])));
+  } catch {
+    throw new HttpError(400, "That sign-in didn't work. Try again.");
+  }
   if (header.alg !== "RS256") throw new HttpError(400, "That sign-in didn't work. Try again.");
   const key = await googleKey(header.kid);
   const ok = key && await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, b64urlBytes(parts[2]),
@@ -210,22 +216,30 @@ async function newSession(env, userId, kind, label) {
 
 async function googleRedirect(request, env, url) {
   const form = await request.formData();
-  // Google's double-submit check against cross-site posts
+  // Google's double-submit check against cross-site posts (when the browser
+  // sends the cookie along; the signed token is checked either way)
   const csrf = form.get("g_csrf_token");
-  if (!csrf || csrf !== cookies(request).g_csrf_token) throw new HttpError(400, "That sign-in didn't work. Try again.");
+  const csrfCookie = cookies(request).g_csrf_token;
+  if (csrfCookie && csrf !== csrfCookie) throw new HttpError(400, "That sign-in didn't work. Try again.");
   const claims = await verifyGoogleToken(env, form.get("credential"));
   const userId = await upsertUser(env, claims);
   const token = await newSession(env, userId, "web", request.headers.get("user-agent") || "");
-  const headers = new Headers({ "set-cookie": cookie(SESSION_COOKIE, token, 400 * 86400), "cache-control": "no-store" });
-  // signing in to connect Nova Clip on a PC: hand that copy its own key
+  // Google's post comes from another site, so browsers leave out our other
+  // cookies (like the "connect Nova Clip" one). Finish on our own page,
+  // where they're sent again.
+  return new Response(null, { status: 303, headers: {
+    "set-cookie": cookie(SESSION_COOKIE, token, 400 * 86400), "cache-control": "no-store", location: "/auth/finish",
+  } });
+}
+
+// After signing in: connecting Nova Clip on a PC? Hand that copy its own key.
+async function finishSignIn(request, env) {
+  const who = await signedIn(request, env);
   const link = parseLink(cookies(request)[LINK_COOKIE]);
-  if (link) {
-    headers.append("set-cookie", cookie(LINK_COOKIE, "", 0));
-    const device = await newSession(env, userId, "device", "Nova Clip");
-    headers.set("location", loopback(link, device));
-  } else {
-    headers.set("location", "/");
-  }
+  if (!who || !link) return new Response(null, { status: 303, headers: { location: "/", "cache-control": "no-store" } });
+  const device = await newSession(env, who.userId, "device", "Nova Clip");
+  const headers = new Headers({ location: loopback(link, device), "cache-control": "no-store" });
+  headers.append("set-cookie", cookie(LINK_COOKIE, "", 0));
   return new Response(null, { status: 303, headers });
 }
 
