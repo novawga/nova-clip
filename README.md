@@ -24,6 +24,7 @@ installing one, so you only have to download it once.
 - Saves your game, your mic and voice chat (Discord) as separate sound tracks
   too, so you can turn any of them off in a clip afterwards
 - Sends clips to your phone, and makes share links friends can watch in a browser
+- Shows "Playing Nova Clip" as your Discord activity, with the game you're clipping (you can turn it off)
 - "Nova, clip that" voice command that learns your voice, runs offline, and
   ignores your speakers
 - 21 color themes, each with its own background picture if you want one
