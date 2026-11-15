@@ -23,6 +23,7 @@
     <symbol id="i-save" viewBox="0 0 24 24"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 7h15M10 7V5h4v2m-7.5 0 .8 12a2 2 0 0 0 2 1.9h5.4a2 2 0 0 0 2-1.9l.8-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-film" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m10 9.2 5 2.8-5 2.8Z" fill="currentColor"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10.2 13.8a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.700-5.700l-1.100 1.100M13.800 10.200a4 4 0 0 0-5.700 0l-3 3a4 4 0 0 0 5.700 5.700l1.100-1.100" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
     <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5v4h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   </defs>
 </svg>
@@ -88,10 +89,12 @@
     <p class="sheet-meta" id="sheetMeta"></p>
     <div class="sheet-actions">
       <button class="btn primary" id="saveBtn"><svg><use href="#i-save"/></svg><span id="saveLabel">Save to Photos</span></button>
+      <button class="btn" id="shareBtn"><svg><use href="#i-link"/></svg><span id="shareLabel">Share link</span></button>
       <a class="btn" id="downloadBtn" download><span>Download</span></a>
       <button class="btn danger" id="deleteBtn"><svg><use href="#i-trash"/></svg><span>Delete</span></button>
     </div>
     <p class="save-help" id="saveHelp" hidden></p>
+    <p class="save-help" id="shareHelp" hidden>Anyone with the link can watch this clip. <button class="link inline" id="unshareBtn" type="button">Stop sharing</button></p>
   </div>
 </div>
 

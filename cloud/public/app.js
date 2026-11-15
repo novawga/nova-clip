@@ -136,6 +136,7 @@ function openClip(c) {
   $("saveLabel").textContent = canShareFiles() ? "Save to Photos" : "Save";
   $("saveBtn").disabled = false;
   $("saveHelp").hidden = true;
+  renderShare();
   $("sheet").hidden = false;
   document.body.style.overflow = "hidden";
   history.pushState({ clip: c.id }, "");
@@ -215,6 +216,54 @@ async function share(file) {
     toast("Couldn't open the share sheet. Use Download instead.", true);
   }
 }
+
+// Share link: anyone with the link can watch this one clip, no sign-in.
+const shareUrl = (c) => `${location.origin}/s/${c.share}`;
+
+function renderShare() {
+  const c = state.open;
+  if (!c) return;
+  $("shareLabel").textContent = c.share ? "Send link" : "Share link";
+  $("shareHelp").hidden = !c.share;
+}
+
+async function sendLink(c) {
+  const url = shareUrl(c);
+  if (navigator.share) {
+    try { await navigator.share({ title: c.name, url }); return; }
+    catch (e) { if (e && e.name === "AbortError") return; }
+  }
+  try { await navigator.clipboard.writeText(url); toast("Link copied"); }
+  catch { toast("The link is ready. Tap Send link."); }
+}
+
+$("shareBtn").addEventListener("click", async () => {
+  const c = state.open;
+  if (!c) return;
+  if (c.share) return sendLink(c);
+  const btn = $("shareBtn");
+  btn.disabled = true;
+  try {
+    const r = await api(`/api/clips/${c.id}/share`, { method: "POST" });
+    c.share = r.code;
+    renderShare();
+    // (the share sheet only opens right after a tap; if this one is too old
+    // by now, the button says "Send link" for the next tap)
+    if (state.open === c) await sendLink(c);
+  } catch (e) { toast(e.message, true); }
+  btn.disabled = false;
+});
+
+$("unshareBtn").addEventListener("click", async () => {
+  const c = state.open;
+  if (!c || !c.share) return;
+  try {
+    await api(`/api/clips/${c.id}/share`, { method: "DELETE" });
+    c.share = "";
+    renderShare();
+    toast("The link doesn't work anymore");
+  } catch (e) { toast(e.message, true); }
+});
 
 $("deleteBtn").addEventListener("click", async () => {
   const c = state.open;

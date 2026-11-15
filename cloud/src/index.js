@@ -7,6 +7,9 @@
 //
 // Storage: R2 (BUCKET) holds the videos and thumbnails, D1 (DB) the people,
 // sign-ins and the list of clips.
+//
+// A clip can get a share link (/s/<code>): anyone with the link can watch
+// that one clip without signing in, until its owner stops sharing or deletes it.
 
 const SESSION_COOKIE = "nc_session";
 const LINK_COOKIE = "nc_link";
@@ -45,6 +48,8 @@ async function route(request, env, ctx) {
   if (p === "/auth/device" && m === "POST") return deviceFromSession(request, env);
   if (p === "/auth/finish" && m === "GET") return finishSignIn(request, env);
   if (p === "/link" && m === "GET") return linkStart(request, env, url);
+  let s;
+  if ((s = p.match(/^\/s\/([a-f0-9]{24})(?:\/(video|thumb))?$/)) && (m === "GET" || m === "HEAD")) return shared(request, env, s[1], s[2] || "", url);
   // local testing only: wrangler dev --var DEV_LOGIN:1 (never set when deployed)
   if (p === "/auth/dev" && m === "POST" && env.DEV_LOGIN === "1") {
     const b = await request.json();
@@ -70,6 +75,8 @@ async function route(request, env, ctx) {
     if ((r = p.match(/^\/api\/clips\/([a-f0-9]{32})\/video$/)) && (m === "GET" || m === "HEAD")) return video(request, env, who, r[1], url);
     if ((r = p.match(/^\/api\/clips\/([a-f0-9]{32})\/thumb$/)) && m === "GET") return thumb(env, who, r[1]);
     if ((r = p.match(/^\/api\/clips\/([a-f0-9]{32})\/thumb$/)) && m === "PUT") return putThumb(request, env, who, r[1]);
+    if ((r = p.match(/^\/api\/clips\/([a-f0-9]{32})\/share$/)) && m === "POST") return shareClip(env, who, r[1], url);
+    if ((r = p.match(/^\/api\/clips\/([a-f0-9]{32})\/share$/)) && m === "DELETE") return unshareClip(env, who, r[1]);
     if ((r = p.match(/^\/api\/clips\/([a-f0-9]{32})$/)) && m === "DELETE") return deleteClip(env, who, r[1]);
     if ((r = p.match(/^\/api\/clips\/([a-f0-9]{32})$/)) && m === "PATCH") return renameClip(request, env, who, r[1]);
     throw new HttpError(404, "Not found.");
@@ -95,6 +102,13 @@ async function ensureSchema(env) {
       upload_id TEXT, has_thumb INTEGER NOT NULL DEFAULT 0, source TEXT)`),
     env.DB.prepare(`CREATE INDEX IF NOT EXISTS clips_user ON clips (user_id, status, created)`),
   ]);
+  // added later: the code of a clip's share link (empty while it isn't shared)
+  try {
+    await env.DB.prepare("SELECT share FROM clips LIMIT 1").first();
+  } catch {
+    try { await env.DB.prepare("ALTER TABLE clips ADD COLUMN share TEXT").run(); } catch {}
+  }
+  await env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS clips_share ON clips (share) WHERE share IS NOT NULL").run();
   schemaReady = true;
 }
 
@@ -322,7 +336,7 @@ async function me(env, who) {
 function clipOut(c) {
   return { id: c.id, name: c.name, game: c.game || "", size: c.size, duration: c.duration || 0,
     width: c.width || 0, height: c.height || 0, recorded: c.recorded || c.created, created: c.created,
-    hasThumb: !!c.has_thumb, source: c.source || "" };
+    hasThumb: !!c.has_thumb, source: c.source || "", share: c.share || "" };
 }
 
 async function listClips(env, userId) {
@@ -443,9 +457,14 @@ function safeFileName(name) {
 
 async function video(request, env, who, clipId, url) {
   const c = await ownClip(env, who, clipId);
-  const key = clipKey(who.userId, clipId);
+  return streamClip(request, env, c, url, "private, max-age=3600");
+}
+
+// streamClip sends a clip's video, whole or the part the player asked for.
+async function streamClip(request, env, c, url, cache) {
+  const key = clipKey(c.user_id, c.id);
   const headers = new Headers({
-    "content-type": "video/mp4", "accept-ranges": "bytes", "cache-control": "private, max-age=3600",
+    "content-type": "video/mp4", "accept-ranges": "bytes", "cache-control": cache,
   });
   if (url.searchParams.get("download")) {
     const fname = safeFileName(c.name);
@@ -500,6 +519,96 @@ async function renameClip(request, env, who, clipId) {
   if (!name) throw new HttpError(400, "Give it a name.");
   await env.DB.prepare("UPDATE clips SET name = ? WHERE id = ?").bind(name, clipId).run();
   return json({ ok: true });
+}
+
+// ---------------------------------------------------------------- share links
+async function shareClip(env, who, clipId, url) {
+  const c = await ownClip(env, who, clipId);
+  let code = c.share;
+  if (!code) {
+    code = randomHex(12);
+    await env.DB.prepare("UPDATE clips SET share = ? WHERE id = ?").bind(code, clipId).run();
+  }
+  return json({ code, url: `${url.origin}/s/${code}` });
+}
+
+async function unshareClip(env, who, clipId) {
+  await ownClip(env, who, clipId);
+  await env.DB.prepare("UPDATE clips SET share = NULL WHERE id = ?").bind(clipId).run();
+  return json({ ok: true });
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+}
+
+function fmtLength(sec) {
+  sec = Math.round(sec || 0);
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
+}
+
+const pageHeaders = {
+  "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex",
+  "referrer-policy": "no-referrer", "x-content-type-options": "nosniff", "x-frame-options": "DENY",
+  "content-security-policy": "default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self'; media-src 'self'; base-uri 'none'; form-action 'none'",
+};
+
+function sharePage(body, title, head = "", status = 200) {
+  return new Response(`<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>${esc(title)}</title>
+<meta name="theme-color" content="#0e0c17">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.png">
+<link rel="stylesheet" href="/styles.css">
+${head}</head>
+<body class="watch">
+<header class="top"><a class="brand" href="/"><img class="mark" src="/favicon.png" alt="" width="26" height="26"><span>Nova Clip</span></a></header>
+<main class="main">
+${body}
+</main>
+</body>
+</html>`, { status, headers: pageHeaders });
+}
+
+// The page (and video) behind a share link. No sign-in: the code is the key.
+async function shared(request, env, code, part, url) {
+  const c = await env.DB.prepare("SELECT * FROM clips WHERE share = ? AND status = 'ready'").bind(code).first();
+  if (!c) {
+    if (part) return new Response("Not found", { status: 404, headers: { "cache-control": "no-store" } });
+    return sharePage(`<section class="view welcome"><h1 class="big">This clip isn't shared anymore.</h1><p class="lead">The link was turned off, or the clip was deleted.</p></section>`, "Nova Clip", "", 404);
+  }
+  if (part === "video") return streamClip(request, env, c, url, "private, max-age=600");
+  if (part === "thumb") {
+    const obj = c.has_thumb ? await env.BUCKET.get(thumbKey(c.user_id, c.id)) : null;
+    if (!obj) return new Response("Not found", { status: 404, headers: { "cache-control": "no-store" } });
+    return new Response(obj.body, { headers: { "content-type": "image/jpeg", "cache-control": "private, max-age=600" } });
+  }
+  const base = `${url.origin}/s/${code}`;
+  const w = c.width || 1920, h = c.height || 1080;
+  const head = `<meta property="og:site_name" content="Nova Clip">
+<meta property="og:title" content="${esc(c.name)}">
+<meta property="og:description" content="A ${fmtLength(c.duration)} clip${c.game ? " from " + esc(c.game) : ""}, clipped with Nova Clip.">
+<meta property="og:type" content="video.other">
+<meta property="og:url" content="${base}">
+<meta property="og:video" content="${base}/video">
+<meta property="og:video:secure_url" content="${base}/video">
+<meta property="og:video:type" content="video/mp4">
+<meta property="og:video:width" content="${w}">
+<meta property="og:video:height" content="${h}">
+${c.has_thumb ? `<meta property="og:image" content="${base}/thumb">\n<meta name="twitter:card" content="summary_large_image">\n` : ""}`;
+  const facts = [c.game, fmtLength(c.duration)].filter(Boolean).map(esc).join(", ");
+  const body = `<section class="view watch-view">
+  <div class="watch-video"><video controls playsinline preload="metadata" src="/s/${code}/video"${c.has_thumb ? ` poster="/s/${code}/thumb"` : ""}></video></div>
+  <h1 class="watch-title">${esc(c.name)}</h1>
+  <p class="sheet-meta">${facts}</p>
+  <div class="watch-actions"><a class="btn primary" href="/s/${code}/video?download=1" download>Download</a></div>
+  <p class="watch-foot">Clipped with <a href="https://github.com/novawga/nova-clip">Nova Clip</a>, a free game clipper for Windows.</p>
+</section>`;
+  return sharePage(body, `${c.name} | Nova Clip`, head);
 }
 
 function fmtGB(b) {
