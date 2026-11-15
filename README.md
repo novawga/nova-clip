@@ -21,6 +21,9 @@ installing one, so you only have to download it once.
   frame rate, encoder and bitrate
 - Uses your graphics card's encoder (NVIDIA, AMD or Intel) so games keep their
   frame rate
+- Saves your game, your mic and voice chat (Discord) as separate sound tracks
+  too, so you can turn any of them off in a clip afterwards
+- Sends clips to your phone, and makes share links friends can watch in a browser
 - "Nova, clip that" voice command that learns your voice, runs offline, and
   ignores your speakers
 - 21 color themes, each with its own background picture if you want one
