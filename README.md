@@ -15,7 +15,7 @@ installing one, so you only have to download it once.
 
 ## What it does
 
-- Records just your game (found automatically): nothing when no game is running, and nothing while you're alt-tabbed out of it
+- Records just your game (found automatically, including any game Windows' Game Bar knows, from the moment it opens): nothing when no game is running, and nothing while you're alt-tabbed out of it
 - Clip length from 5 seconds to 30 minutes
 - Clip quality: Light, Balanced or Sharpest, plus full control over resolution,
   frame rate, encoder and bitrate
